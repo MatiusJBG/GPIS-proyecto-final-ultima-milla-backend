@@ -4,7 +4,7 @@ Backend independiente en Node 24.11.0, npm 11, TypeScript y Express. Prisma Clie
 
 ## Base de datos original
 
-Se utiliza el paquete `db-proyecto` entregado por el equipo: cuatro migraciones SQL, roles, funciones y fixtures originales. Los diez archivos de ejecución/pruebas necesarios están incorporados sin cambios en `database/` y `compose.test.yaml`, con hashes de procedencia. No se mantiene otra cadena de migraciones ni se ejecuta Prisma Migrate o db push.
+Se utiliza directamente el paquete de base de datos del proyecto, descomprimido fuera de este repositorio. Ese paquete es la fuente de las migraciones SQL, roles, funciones y fixtures. El backend no incluye copias de esos archivos ni de su Compose; no se mantiene otra cadena de migraciones ni se ejecuta Prisma Migrate o db push.
 
 Sigue primero `LEEME_PRIMERO.txt` y `README.md` de ese paquete. Genera las credenciales locales de la base mediante su procedimiento; no copies su `.env.example` sobre `.env`. En esta máquina la base está publicada en `127.0.0.1:15432` porque otros puertos estaban ocupados/bloqueados. Los demás equipos deben usar su propio `POSTGRES_PORT`.
 
@@ -12,7 +12,7 @@ Sigue primero `LEEME_PRIMERO.txt` y `README.md` de ese paquete. Genera las crede
 
 1. Usa Node 24.11.0 y npm 11.
 2. Crea el `.env` de esta API a partir de su `.env.example` y completa `DATABASE_URL` con el rol `logistica_app`, `APP_PASSWORD` y el puerto local del paquete. No uses administrador en la API ni compartas las credenciales.
-3. Para las pruebas puedes dejar `DATABASE_PACKAGE_DIR=.`: el paquete original ya está versionado. También se permite apuntar a una copia externa idéntica; se verifican sus hashes antes de usarla. No es una dependencia del servidor de producción.
+3. Para las pruebas, configura `DATABASE_PACKAGE_DIR` con la carpeta del paquete de base de datos descomprimido. Si está junto al backend y se llama `db-proyecto`, usa `DATABASE_PACKAGE_DIR=../db-proyecto`. También puedes indicar una ruta absoluta con barras `/`, por ejemplo `C:/Proyectos/db-proyecto`. Cada integrante ajusta esta ruta en su `.env` local; no copies la carpeta al backend. Esta variable solo se usa para comprobar el paquete y ejecutar las pruebas, no para arrancar la API.
 4. Instala y comprueba:
 
 ```powershell
@@ -50,9 +50,11 @@ npm run test:integration
 npm run test:integration:postgres
 ```
 
-El segundo comando verifica los hashes y usa `compose.test.yaml` del paquete original con nombre de proyecto único, tmpfs y un puerto efímero en localhost. No toca la base `logistica` de desarrollo. Ejecuta los scripts SQL originales, usa sus fixtures y corre los mismos archivos Jest/Supertest con los adaptadores reales y el rol restringido. El reset administrativo se limita al contenedor temporal de esa ejecución, comprobando sus etiquetas. Al terminar elimina únicamente sus contenedores/red y el directorio temporal propio.
+El segundo comando exige `DATABASE_PACKAGE_DIR` y comprueba que existan los diez archivos requeridos del paquete externo. Esa comprobación valida la disponibilidad del paquete, no certifica su contenido ni sustituye la revisión de sus migraciones. No crea ni copia SQL o fixtures al backend. Si falta la ruta o un archivo, falla antes de arrancar Docker.
 
-GitHub Actions ejecuta estos mismos pasos en cada push de las ramas de trabajo y PR hacia `develop`, y conserva el resultado de integración con el SHA del commit. Node y las acciones están fijados; la imagen PostgreSQL se fija por digest. SonarQube se ejecuta localmente por integrante, no se intenta conectar un runner público a localhost de un compañero.
+El lanzador utiliza el `compose.test.yaml` externo con nombre de proyecto único, tmpfs y un puerto efímero en localhost. No toca la base `logistica` de desarrollo. Ejecuta los scripts SQL originales, usa sus fixtures y corre los mismos archivos Jest/Supertest con los adaptadores reales y el rol restringido. El reset administrativo se limita al contenedor temporal de esa ejecución, comprobando sus etiquetas. Al terminar elimina únicamente sus contenedores/red y el directorio temporal propio. Conserva intactos el paquete externo y los volúmenes de desarrollo.
+
+Las verificaciones se ejecutan localmente por integrante, con Node 24.11.0, Docker y el paquete de base de datos externo. Se retiró el workflow añadido para GitHub Actions porque dependía de una copia del paquete dentro del repositorio. Los resultados locales no se presentan como CI aprobado. SonarQube también se ejecuta localmente. Una automatización futura deberá definir cómo obtener el paquete externo, sin duplicar ni mantener otra versión de la base en este backend.
 
 El runner original de concurrencia abre conexiones administrativas adicionales: se les pasa `PGOPTIONS=-csearch_path=logistica,pg_catalog` por sesión para resolver sus tablas. No se modifica el SQL del paquete ni la configuración persistente de roles.
 

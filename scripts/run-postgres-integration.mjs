@@ -1,14 +1,11 @@
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
-import { mkdtempSync, writeFileSync, unlinkSync, rmdirSync, existsSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, unlinkSync, rmdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { verifyDatabasePackage } from './verify-database-package.mjs';
 
-const packagePath = process.env.DATABASE_PACKAGE_DIR || process.cwd();
-if (!packagePath || !existsSync(join(packagePath, 'compose.test.yaml'))) {
-  throw new Error('Configura DATABASE_PACKAGE_DIR con la carpeta del paquete original db-proyecto.');
-}
+const packagePath = process.env.DATABASE_PACKAGE_DIR;
 verifyDatabasePackage(packagePath);
 const project = `logistica_api_${process.pid}_${Date.now()}`;
 const temp = mkdtempSync(join(tmpdir(), 'logistica-api-'));

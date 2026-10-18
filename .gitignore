@@ -7,8 +7,3 @@ coverage/
 *.log
 .scannerwork/
 .sonar/
-database/backups/*
-!database/backups/.gitkeep
-database/test-results/*
-!database/test-results/.gitkeep
-integration-ci.txt

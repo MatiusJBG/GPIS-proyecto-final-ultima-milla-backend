@@ -2,21 +2,21 @@
 > gpis-ultima-milla-api@0.1.0 test:integration:postgres
 > node --env-file-if-exists=.env scripts/run-postgres-integration.mjs
 
- Network logistica_api_31260_1792360843694_default Creating
- Network logistica_api_31260_1792360843694_default Creating
- Network logistica_api_31260_1792360843694_default Created
- Network logistica_api_31260_1792360843694_default Created
- Container logistica_api_31260_1792360843694-postgres-1 Creating
- Container logistica_api_31260_1792360843694-postgres-1 Created
- Container logistica_api_31260_1792360843694-postgres-1 Starting
- Container logistica_api_31260_1792360843694-postgres-1 Started
- Container logistica_api_31260_1792360843694-postgres-1 Waiting
- Container logistica_api_31260_1792360843694-postgres-1 Healthy
- Container logistica_api_31260_1792360843694-postgres-1 Running
- Container logistica_api_31260_1792360843694-postgres-1 Waiting
- Container logistica_api_31260_1792360843694-postgres-1 Healthy
- Container logistica_api_31260_1792360843694-tests-run-da83cffce35a Creating
- Container logistica_api_31260_1792360843694-tests-run-da83cffce35a Created
+ Network logistica_api_10284_1792364912429_default Creating
+ Network logistica_api_10284_1792364912429_default Creating
+ Network logistica_api_10284_1792364912429_default Created
+ Network logistica_api_10284_1792364912429_default Created
+ Container logistica_api_10284_1792364912429-postgres-1 Creating
+ Container logistica_api_10284_1792364912429-postgres-1 Created
+ Container logistica_api_10284_1792364912429-postgres-1 Starting
+ Container logistica_api_10284_1792364912429-postgres-1 Started
+ Container logistica_api_10284_1792364912429-postgres-1 Waiting
+ Container logistica_api_10284_1792364912429-postgres-1 Healthy
+ Container logistica_api_10284_1792364912429-postgres-1 Running
+ Container logistica_api_10284_1792364912429-postgres-1 Waiting
+ Container logistica_api_10284_1792364912429-postgres-1 Healthy
+ Container logistica_api_10284_1792364912429-tests-run-a5d634359157 Creating
+ Container logistica_api_10284_1792364912429-tests-run-a5d634359157 Created
 BEGIN
 SET
 CREATE FUNCTION
@@ -37,7 +37,7 @@ SET
 
              create_zone
 --------------------------------------
- 8749ab43-e71e-4016-a6b3-501e98735496
+ 40b90171-9b58-4dd6-88a9-41c3424b4003
 (1 row)
 
 RESET
@@ -57,17 +57,17 @@ DO
  PASS: concurrencia real al ultimo cupo, sin perdida ni sobrecapacidad
 (1 row)
 
-(node:10572) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
+(node:35028) ExperimentalWarning: VM Modules is an experimental feature and might change at any time
 (Use `node --trace-warnings ...` to show where the warning was created)
 Test Suites: 3 passed, 3 total
 Tests:       32 passed, 32 total
 Snapshots:   0 total
-Time:        16.448 s, estimated 24 s
+Time:        53.42 s
 Ran all test suites.
 Force exiting Jest: Have you considered using `--detectOpenHandles` to detect async operations that kept running after all tests finished?
- Container logistica_api_31260_1792360843694-postgres-1 Stopping
- Container logistica_api_31260_1792360843694-postgres-1 Stopped
- Container logistica_api_31260_1792360843694-postgres-1 Removing
- Container logistica_api_31260_1792360843694-postgres-1 Removed
- Network logistica_api_31260_1792360843694_default Removing
- Network logistica_api_31260_1792360843694_default Removed
+ Container logistica_api_10284_1792364912429-postgres-1 Stopping
+ Container logistica_api_10284_1792364912429-postgres-1 Stopped
+ Container logistica_api_10284_1792364912429-postgres-1 Removing
+ Container logistica_api_10284_1792364912429-postgres-1 Removed
+ Network logistica_api_10284_1792364912429_default Removing
+ Network logistica_api_10284_1792364912429_default Removed

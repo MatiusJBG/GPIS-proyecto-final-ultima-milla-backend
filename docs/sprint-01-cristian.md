@@ -1,6 +1,6 @@
 # Sprint 01 · Cristian: integración con la base original
 
-Estado: implementación backend e integración PostgreSQL verificadas localmente. Pendientes de cierre: revisión del contrato por Jhon/Alexis, PR revisado, CI y recorrido web que corresponden al equipo. SonarQube local aprobado, nueve hallazgos corregidos y cero incidencias abiertas en el análisis final; evidencia vinculada al commit local b943483b37e76a1e26b04a4faabc0fb813e246f1. No declarar todo el sprint Done solo por este resultado.
+Estado: implementación backend e integración PostgreSQL verificadas localmente. Pendientes compartidos: revisión coordinada del contrato y recorrido web. Modalidad acordada con Cristian: verificaciones locales; la aprobación anterior del PR no acredita el reajuste posterior del paquete externo. SonarQube local aprobado, nueve hallazgos corregidos y cero incidencias abiertas en el análisis final; evidencia vinculada al commit local b943483b37e76a1e26b04a4faabc0fb813e246f1. No declarar todo el sprint Done solo por este resultado.
 
 Fecha: 18/10/2026, America/Guayaquil. Ejecutor: Codex asistiendo a Cristian. Base Git: `478582925cec21fec18782de53d66dc12db1ae0f`. Rama: `feature/sprint-01-cristian-orders`. La implementación se entrega en esta rama; el commit base identifica únicamente el punto de partida.
 
@@ -13,7 +13,7 @@ Fecha: 18/10/2026, America/Guayaquil. Ejecutor: Codex asistiendo a Cristian. Bas
 | T12 | Registro separado del pedido persistido, estado inicial pendiente, puertos puros y Clock. Identidad/creación no dependen del cliente ni del reloj del dominio. |
 | T13 | Un schema introspectado y una fábrica Prisma; bootstrap comparte cliente con rol app. Altas mediante funciones autorizadas y lectura del resultado dentro de transacción; cierre del cliente al detener la API. |
 | T17 | ListOrders/GetOrder reutilizan consulta y mapper. Filtros AND por entrega, colección vacía válida, UUID y filtros validados; tipos de día/hora preservados sin convertirlos a UTC. |
-| T23 | Verificados adaptadores y reglas con PostgreSQL real, permisos mínimos y datos aislados. Revisados y corregidos nueve hallazgos bajos/medios del análisis Sonar local. CI y revisión del equipo pendientes. |
+| T23 | Verificados adaptadores y reglas con PostgreSQL real, permisos mínimos y datos aislados. Revisados y corregidos nueve hallazgos bajos/medios del análisis Sonar local. Verificaciones locales; el reajuste posterior debe revisarlo el equipo. |
 | T27 | Núcleo Orders sin dependencias de Node/Express/Prisma/SQL/configuración; mapper y errores técnicos en bordes. Tipos mínimos de cliente compartidos en infraestructura, sin dependencia de Zones hacia Orders. |
 
 ## Paquete conservado
@@ -62,16 +62,16 @@ SHA-256 del contrato final local: `a71ead7ee35e67176861ea9dd09f7d979fda6598157e7
 
 - CP-003: alta/consulta, validación y conflictos de zonas por HTTP con PostgreSQL real.
 - CP-005: registro/recuperación, campos ausentes e inválidos, JSON mal formado y ausencia de inserciones rechazadas. El texto con apariencia de SQL se conserva como dirección literal.
-- CP-009: separación explícita de creación y entrega posterior, conservación al recuperar, metadatos del cliente ignorados y filtros AND. Fixture de doce pedidos tomada de `database/seeds/demo.sql` original para el entorno real; conteos 12/6/4/2/0 y contenido de la intersección comprobados.
+- CP-009: separación explícita de creación y entrega posterior, conservación al recuperar, metadatos del cliente ignorados y filtros AND. Fixture de doce pedidos tomada de `database/seeds/demo.sql` dentro del paquete externo de base de datos para el entorno real; conteos 12/6/4/2/0 y contenido de la intersección comprobados.
 - CP-010: pedido para el día real en Guayaquil; variantes de fecha pasada y zona inactiva verificadas con la base original.
 
 Se extendieron los mismos archivos de Jest/Supertest de Jhon para usar repositorios reales cuando el lanzador configura TEST_DATABASE_URL; no se creó otra suite API ni pruebas unitarias. El modo en memoria queda disponible únicamente como regresión.
 
 ## Aislamiento y reproducción
 
-El paquete original de pruebas está incorporado sin cambios y con diez hashes verificados; DATABASE_PACKAGE_DIR=. lo selecciona. También puede apuntar a la copia externa idéntica. Ejecutar `npm run test:integration:postgres`. El lanzador usa un nombre Compose único, la definición test original, tmpfs y un puerto efímero local. Primero ejecuta los scripts SQL originales y luego Jest contra el rol app. La limpieza valida identidad del contenedor, nombre del proyecto y base logistica_test antes de truncar datos exclusivamente temporales. Conserva schema_migrations y reutiliza la semilla del paquete. El finally elimina solo los contenedores/red y archivo temporal de esa ejecución; nunca el volumen de desarrollo.
+Se utiliza exclusivamente el paquete externo de base de datos. DATABASE_PACKAGE_DIR apunta a su carpeta; por ejemplo ../db-proyecto si está junto al backend. db:verify comprueba que existan los diez archivos necesarios, sin copiar ni certificar su contenido. Ejecutar `npm run test:integration:postgres`. El lanzador usa un nombre Compose único, la definición test original, tmpfs y un puerto efímero local. Primero ejecuta los scripts SQL originales y luego Jest contra el rol app. La limpieza valida identidad del contenedor, nombre del proyecto y base logistica_test antes de truncar datos exclusivamente temporales. Conserva schema_migrations y reutiliza la semilla del paquete. El finally elimina solo los contenedores/red y archivo temporal de esa ejecución; nunca el volumen de desarrollo.
 
-No se ejecutaron Prisma Migrate/db push, migraciones nuevas, cambios de permisos, cambios de SQL, restauraciones ni borrado de volúmenes. No se ha ejecutado el recorrido frontend CP-015 ni completado CP-016 con ambos reportes backend/frontend. PR borrador: https://github.com/MatiusJBG/GPIS-proyecto-final-ultima-milla-backend/pull/2. GitHub Actions terminó con startup_failure antes de ejecutar jobs. El usuario reautorizó continuar con GitHub: las correcciones de Sonar y su evidencia (b943483 y d916105) ya están publicadas. La captura del diagnóstico aportada por el usuario confirma un bloqueo de facturación/cuota de la cuenta propietaria, pendiente de resolución por su administrador.
+No se ejecutaron Prisma Migrate/db push, migraciones nuevas, cambios de permisos, cambios de SQL, restauraciones ni borrado de volúmenes. No se ha ejecutado el recorrido frontend CP-015 ni completado CP-016 con ambos reportes backend/frontend. PR: https://github.com/MatiusJBG/GPIS-proyecto-final-ultima-milla-backend/pull/2. GitHub Actions terminó con startup_failure antes de ejecutar jobs. El usuario reautorizó continuar con GitHub: las correcciones de Sonar y su evidencia (b943483 y d916105) ya están publicadas. La captura del diagnóstico aportada por el usuario confirma un bloqueo de facturación/cuota de la cuenta propietaria, pendiente de resolución por su administrador.
 
 ## SonarQube local final
 
@@ -83,11 +83,19 @@ Ejecución final, commit local `b943483b37e76a1e26b04a4faabc0fb813e246f1`: EXECU
 
 Cobertura: 0%, sin informe importado. El primer análisis reportó cero condiciones evaluadas y el segundo `ignoredConditions=true`; no se atribuye una cobertura del 80% ni una verificación completa de seguridad a la puerta aprobada. La aceptación de integración está respaldada por su ejecución independiente.
 
-Evidencia: `docs/evidence/sprint-01-sonar.json`, `docs/evidence/sprint-01-sonar.txt` y `docs/evidence/sprint-01-sonar.png`. El JSON conserva el SHA realmente analizado; commits posteriores de documentación/evidencia no modifican ese código. El nombre principal de Sonar es develop, pero se analizó la rama local de Cristian, no el develop remoto. Las correcciones y la evidencia ya están publicadas en el PR borrador #2. CI permanece bloqueado por la cuenta propietaria, según el diagnóstico aportado por el usuario. El PR no se aprobó ni se fusionó.
+Evidencia: `docs/evidence/sprint-01-sonar.json`, `docs/evidence/sprint-01-sonar.txt` y `docs/evidence/sprint-01-sonar.png`. El JSON conserva el SHA realmente analizado; commits posteriores de documentación/evidencia no modifican ese código. El nombre principal de Sonar es develop, pero se analizó la rama local de Cristian, no el develop remoto. Las correcciones y la evidencia ya están publicadas en el PR #2. CI permanece bloqueado por la cuenta propietaria, según el diagnóstico aportado por el usuario. El PR no se aprobó ni se fusionó.
 ## Bloqueo de GitHub Actions confirmado
 
 El 18/10/2026 el usuario aportó la captura de la ejecución 39169800335, evento pull_request/review_requested sobre el commit 715e3db. GitHub muestra Startup failure y una anotación que indica pagos recientes fallidos o necesidad de aumentar el límite de gasto de la cuenta. No se creó ningún job ni se ejecutaron pruebas en esa ejecución. La anotación no determina cuál de las dos causas aplica; debe comprobarlo el propietario en Billing & plans.
 
 No corresponde corregir código ni cambiar el workflow para eludir esa restricción. El administrador de la cuenta propietaria debe revisar facturación/cuota y, cuando GitHub permita iniciar Actions, ejecutar nuevamente las verificaciones sobre la revisión actual del PR. No se modificaron planes, pagos, límites, permisos ni protecciones.
 
-Las pruebas locales y Sonar son evidencia independiente; no se presentan como CI aprobado. El PR se conserva como borrador, sin aprobar ni fusionar, pendiente de CI y revisión de otro integrante.
+Las pruebas locales y Sonar son evidencia independiente; no se presentan como CI aprobado. El bloqueo anterior no equivale a CI aprobado. El PR sigue sin fusionar; la modalidad local y el reajuste posterior se describen en la siguiente sección.
+## Reajuste al paquete externo de base de datos
+
+Por indicación de Cristian se retiraron del backend la copia database/, el compose.test.yaml duplicado y el workflow .github/workflows/backend.yml que dependía de esa copia. Cada integrante usa directamente el paquete de base de datos descomprimido y configura DATABASE_PACKAGE_DIR en su .env local. Se conserva una sola fuente de SQL: el paquete externo de base de datos. El schema Prisma y el contrato HTTP del backend siguen siendo necesarios y no cambiaron.
+
+El lanzador exige una ruta configurada y comprueba los diez archivos requeridos antes de crear contenedores; no vuelve implícitamente al directorio del backend. db:verify ahora comprueba disponibilidad, no hashes. Para este reajuste se compararon por separado los diez SHA-256 del paquete externo con la instantánea anterior, sin diferencias. La modalidad de validación es local; la ejecución anterior de Actions bloqueada se conserva únicamente como antecedente histórico.
+
+La evidencia de SonarQube corresponde al commit de código b943483; este reajuste cambia scripts de preparación, configuración y documentación, no src ni los casos HTTP. Su resultado no se presenta como un nuevo análisis Sonar de estos scripts. El reporte PDF externo describe la entrega previa al reajuste; esta sección registra el cambio posterior. El nuevo commit del PR requiere la revisión de Jhon; no se aprueba ni se fusiona automáticamente.
+Validación del reajuste: db:verify, typecheck, typecheck:test, lint y build aprobados. Suite SQL original y concurrencia aprobadas. Las mismas tres suites HTTP/Prisma/PostgreSQL aprobaron sus 32 pruebas usando el paquete externo. Sin DATABASE_PACKAGE_DIR, el lanzador rechazó la ejecución antes de arrancar Docker.

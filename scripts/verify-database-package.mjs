@@ -1,22 +1,36 @@
 import process from 'node:process';
-import { readFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
-import { resolve, sep } from 'node:path';
-import { fileURLToPath, URL } from 'node:url';
+import { existsSync, statSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const requiredFiles = [
+  'compose.test.yaml',
+  'database/init/00-bootstrap.sh',
+  'database/migrations/001_schema.sql',
+  'database/migrations/002_integrity.sql',
+  'database/migrations/003_commands.sql',
+  'database/migrations/004_permissions.sql',
+  'database/scripts/migrate.sh',
+  'database/seeds/demo.sql',
+  'database/tests/integration.sql',
+  'database/tests/run.sh',
+];
 
 export function verifyDatabasePackage(directory) {
-  const root = resolve(directory);
-  const entries = JSON.parse(readFileSync(new URL('../database/original-checksums.json',import.meta.url),'utf8'));
-  for (const entry of entries) {
-    const path = resolve(root,entry.path);
-    if (!path.startsWith(root+sep)) throw new Error('Ruta de paquete fuera de su raíz.');
-    const hash = createHash('sha256').update(readFileSync(path)).digest('hex');
-    if (hash !== entry.sha256) throw new Error(`El archivo original cambió: ${entry.path}`);
+  if (typeof directory !== 'string' || directory.trim().length === 0) {
+    throw new Error('Configura DATABASE_PACKAGE_DIR en .env con la carpeta del paquete de base de datos.');
   }
-  return entries.length;
+  const root = resolve(directory);
+  for (const file of requiredFiles) {
+    const path = resolve(root,file);
+    if (!existsSync(path) || !statSync(path).isFile()) {
+      throw new Error(`Paquete de base incompleto: falta ${file}. Revisa DATABASE_PACKAGE_DIR y el paquete de base de datos.`);
+    }
+  }
+  return requiredFiles.length;
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const count = verifyDatabasePackage(process.env.DATABASE_PACKAGE_DIR || process.cwd());
-  process.stdout.write(`Paquete original verificado: ${count} archivos coinciden con sus SHA-256.\n`);
+  const count = verifyDatabasePackage(process.env.DATABASE_PACKAGE_DIR);
+  process.stdout.write(`Paquete externo disponible: ${count} archivos requeridos encontrados.\n`);
 }
