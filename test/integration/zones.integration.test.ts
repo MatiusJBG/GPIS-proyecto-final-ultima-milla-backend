@@ -1,18 +1,21 @@
 import request from 'supertest';
 import { createApp } from '../../src/bootstrap/create-app.js';
-import { InMemoryZoneRepository } from '../../src/modules/zones/infrastructure/postgres/in-memory-zone.repository.js';
+import type { ZoneRepository } from '../../src/modules/zones/application/ports/zone.repository.port.js';
+import { integrationRepositories, closeIntegrationDatabase } from './database.fixture.js';
 
 describe('S1-CP-003 · Zonas: registro y validación integrada', () => {
-  let zoneRepository: InMemoryZoneRepository;
+  let zoneRepository: ZoneRepository;
   let app: ReturnType<typeof createApp>;
 
   beforeEach(() => {
-    zoneRepository = new InMemoryZoneRepository();
+    zoneRepository = integrationRepositories().zoneRepository;
     app = createApp({
       webOrigin: 'http://localhost:5173',
       zoneRepository,
     });
   });
+
+  afterAll(closeIntegrationDatabase);
 
   describe('Registro de zona válida', () => {
     it('debe registrar y persistir una zona válida con código 201 y metadatos correctos', async () => {

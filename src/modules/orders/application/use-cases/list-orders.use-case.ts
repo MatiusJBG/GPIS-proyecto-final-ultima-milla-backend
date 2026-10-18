@@ -1,10 +1,14 @@
 import type { Order } from '../../domain/order.entity.js';
 import type { OrderQueryFilters, OrderRepository } from '../ports/order.repository.port.js';
+import { validateDeliveryDate, validateUuid } from '../../domain/order.validation.js';
 
 export class ListOrdersUseCase {
   constructor(private readonly orderRepository: OrderRepository) {}
 
   async execute(filters?: OrderQueryFilters): Promise<readonly Order[]> {
-    return await this.orderRepository.findAll(filters);
+    return await this.orderRepository.findAll({
+      ...(filters?.deliveryDate !== undefined ? { deliveryDate: validateDeliveryDate(filters.deliveryDate) } : {}),
+      ...(filters?.zoneId !== undefined ? { zoneId: validateUuid(filters.zoneId, 'zoneId') } : {}),
+    });
   }
 }

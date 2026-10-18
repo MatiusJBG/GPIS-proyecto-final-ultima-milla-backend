@@ -1,5 +1,5 @@
 import { Order } from '../../domain/order.entity.js';
-import { ZoneNotFoundError } from '../../domain/order.errors.js';
+import { OrderConflictError, ZoneNotFoundError } from '../../domain/order.errors.js';
 import type { OrderRepository } from '../ports/order.repository.port.js';
 import type { OrderZonePort } from '../ports/order-zone.port.js';
 
@@ -17,7 +17,7 @@ export class CreateOrderUseCase {
   ) {}
 
   async execute(command: CreateOrderCommand): Promise<Order> {
-    const order = Order.create({
+    const order = Order.prepare({
       zoneId: command.zoneId,
       deliveryAddress: command.deliveryAddress,
       deliveryDate: command.deliveryDate,
@@ -27,6 +27,9 @@ export class CreateOrderUseCase {
     const zone = await this.zonePort.findById(order.zoneId);
     if (zone === null) {
       throw new ZoneNotFoundError(`No existe una zona con identificador '${order.zoneId}'.`);
+    }
+    if (zone.active === false) {
+      throw new OrderConflictError('La zona seleccionada está inactiva.');
     }
 
     return await this.orderRepository.create(order);

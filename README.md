@@ -1,35 +1,65 @@
 # API de logística de última milla
 
-API independiente del repositorio web. El composition root vive en `src/bootstrap`; `createApp(dependencies)` se puede componer por separado de la entrada que ejecuta `listen`. Las capas Domain y Application quedan libres de Express, SQL, variables de entorno y IO.
+Backend independiente en Node 24.11.0, npm 11, TypeScript y Express. Prisma Client/CLI y el adaptador PostgreSQL quedan fijados en 7.10.1. El frontend consume HTTP y mantiene su propio repositorio.
 
-## Versiones fijadas
+## Base de datos original
 
-- Node.js 24.11.0 (`.nvmrc`) y npm 11.
-- TypeScript 6.0.3.
-- Express 5.3.0.
+Se utiliza el paquete `db-proyecto` entregado por el equipo: cuatro migraciones SQL, roles, funciones y fixtures originales. Los diez archivos de ejecución/pruebas necesarios están incorporados sin cambios en `database/` y `compose.test.yaml`, con hashes de procedencia. No se mantiene otra cadena de migraciones ni se ejecuta Prisma Migrate o db push.
 
-El `package-lock.json` de este repositorio fija las dependencias instaladas. Prisma y la conexión a PostgreSQL se configuran en el trabajo de base de datos, siguiendo exclusivamente su manual.
+Sigue primero `LEEME_PRIMERO.txt` y `README.md` de ese paquete. Genera las credenciales locales de la base mediante su procedimiento; no copies su `.env.example` sobre `.env`. En esta máquina la base está publicada en `127.0.0.1:15432` porque otros puertos estaban ocupados/bloqueados. Los demás equipos deben usar su propio `POSTGRES_PORT`.
 
-## Estructura
+## Configuración del backend
 
-```text
-src/
-  bootstrap/                  configuración de proceso, composición y listen
-  modules/
-    zones/{domain,application/ports,application/use-cases,infrastructure/postgres,presentation/http}/
-    orders/{domain,application/ports,application/use-cases,infrastructure,presentation/http}/
-```
-
-Las carpetas de módulos quedan preparadas para sus responsables. `GET /health` informa que el proceso HTTP está activo.
-
-## Comandos
+1. Usa Node 24.11.0 y npm 11.
+2. Crea el `.env` de esta API a partir de su `.env.example` y completa `DATABASE_URL` con el rol `logistica_app`, `APP_PASSWORD` y el puerto local del paquete. No uses administrador en la API ni compartas las credenciales.
+3. Para las pruebas puedes dejar `DATABASE_PACKAGE_DIR=.`: el paquete original ya está versionado. También se permite apuntar a una copia externa idéntica; se verifican sus hashes antes de usarla. No es una dependencia del servidor de producción.
+4. Instala y comprueba:
 
 ```powershell
 npm ci
-npm run dev
+npm run db:verify
 npm run typecheck
+npm run typecheck:test
+npm run lint
 npm run build
-npm start
+npm run dev
 ```
 
-La API usa `PORT` (predeterminado `3000`) y `WEB_ORIGIN` (predeterminado `http://localhost:5173`). Copia `.env.example` a `.env` para la configuración local de la aplicación. Ninguna variable `VITE_*` ni cliente web contiene credenciales.
+`npm ci` genera el cliente Prisma desde el schema existente mediante `postinstall`; no modifica PostgreSQL. `dev` ocupa la terminal hasta Ctrl+C. Para ejecutar la versión compilada usa `npm start` después de `build`.
+
+Con `DATABASE_URL`, el servidor comparte un solo cliente entre zonas y pedidos, conecta al arrancar y lo cierra al detenerse. Sin esa variable solo se habilita `/health`. El proceso rechaza una URL de API con un rol diferente de `logistica_app`.
+
+## Rutas y contrato
+
+- `GET /health`: proceso HTTP activo, no diagnóstico de base.
+- `POST /zones`, `GET /zones`, `GET /zones/:id`.
+- `POST /orders`, `GET /orders`, `GET /orders/:id`.
+- Filtros opcionales `deliveryDate` y `zoneId`, combinados con AND sobre la entrega.
+
+Contrato canónico: [docs/contracts/openapi.yaml](docs/contracts/openapi.yaml). Versionado y coordinación: [docs/contracts/README.md](docs/contracts/README.md).
+
+Las escrituras llaman `logistica.create_zone` y `logistica.create_order` con parámetros; no amplían permisos ni hacen DML directo. El alta y su recuperación se hacen en una transacción, por lo que se comprueban las restricciones antes de responder 201. Día y hora de entrega permanecen locales; identidad, estado inicial y metadatos los genera PostgreSQL. La función SQL original rechaza fechas pasadas y se traduce a 400/VALIDATION_ERROR.
+
+## Una suite, dos entornos
+
+```powershell
+# Regresión heredada en memoria; no acredita PostgreSQL:
+npm run test:integration
+
+# Aceptación HTTP/Prisma/PostgreSQL real y pruebas SQL originales:
+npm run test:integration:postgres
+```
+
+El segundo comando verifica los hashes y usa `compose.test.yaml` del paquete original con nombre de proyecto único, tmpfs y un puerto efímero en localhost. No toca la base `logistica` de desarrollo. Ejecuta los scripts SQL originales, usa sus fixtures y corre los mismos archivos Jest/Supertest con los adaptadores reales y el rol restringido. El reset administrativo se limita al contenedor temporal de esa ejecución, comprobando sus etiquetas. Al terminar elimina únicamente sus contenedores/red y el directorio temporal propio.
+
+GitHub Actions ejecuta estos mismos pasos en cada push de las ramas de trabajo y PR hacia `develop`, y conserva el resultado de integración con el SHA del commit. Node y las acciones están fijados; la imagen PostgreSQL se fija por digest. SonarQube se ejecuta localmente por integrante, no se intenta conectar un runner público a localhost de un compañero.
+
+El runner original de concurrencia abre conexiones administrativas adicionales: se les pasa `PGOPTIONS=-csearch_path=logistica,pg_catalog` por sesión para resolver sus tablas. No se modifica el SQL del paquete ni la configuración persistente de roles.
+
+## Prisma y arquitectura
+
+`prisma/schema.prisma` refleja las once tablas introspectadas. Se conserva una sola fábrica en `src/bootstrap/database.ts`. `npm run db:generate` regenera código local; `npm run db:introspect` actualiza únicamente el schema local leyendo la base. Para introspectar, proporciona `DATABASE_INTROSPECTION_URL` de mantenimiento solo en el entorno de ese comando, según el manual; no la uses para ejecutar la API.
+
+Domain y Application de Orders no importan Node, Express, Prisma, SQL ni configuración global. El puerto Clock permanece puro y el reloj real está en infraestructura. Los adaptadores traducen registros y errores técnicos en los bordes.
+
+Estado por tarea, evidencia y pendientes de revisión: [docs/sprint-01-cristian.md](docs/sprint-01-cristian.md). La integración backend no sustituye el recorrido web, los reportes Sonar/CI ni el PR revisado del equipo.

@@ -1,4 +1,4 @@
-import type { Order } from '../../domain/order.entity.js';
+import type { NewOrder, Order } from '../../domain/order.entity.js';
 
 export interface OrderQueryFilters {
   readonly deliveryDate?: string;
@@ -6,7 +6,7 @@ export interface OrderQueryFilters {
 }
 
 export interface OrderRepository {
-  create(order: Order): Promise<Order>;
+  create(order: NewOrder): Promise<Order>;
   findById(id: string): Promise<Order | null>;
   findAll(filters?: OrderQueryFilters): Promise<readonly Order[]>;
 }

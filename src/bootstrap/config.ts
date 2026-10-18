@@ -1,6 +1,7 @@
 export interface AppConfig {
   readonly port: number;
   readonly webOrigin: string;
+  readonly databaseUrl?: string;
 }
 
 export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
@@ -22,5 +23,15 @@ export function loadConfig(environment: NodeJS.ProcessEnv): AppConfig {
     throw new Error('WEB_ORIGIN debe contener únicamente el origen HTTP/HTTPS, sin ruta.');
   }
 
-  return { port, webOrigin };
+  const databaseUrl = environment.DATABASE_URL;
+  if (databaseUrl) {
+    let parsedDatabase: URL;
+    try { parsedDatabase = new URL(databaseUrl); } catch {
+      throw new Error('DATABASE_URL debe ser una conexión PostgreSQL válida.');
+    }
+    if (!['postgres:', 'postgresql:'].includes(parsedDatabase.protocol) || parsedDatabase.username !== 'logistica_app') {
+      throw new Error('La API requiere una conexión PostgreSQL con el rol logistica_app.');
+    }
+  }
+  return { port, webOrigin, ...(databaseUrl ? { databaseUrl } : {}) };
 }
