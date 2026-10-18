@@ -1,11 +1,14 @@
 import express, { type Router } from 'express';
 import type { ZoneRepository } from '../modules/zones/application/ports/zone.repository.port.js';
 import { createZonesModule } from '../modules/zones/index.js';
+import type { OrderRepository } from '../modules/orders/application/ports/order.repository.port.js';
+import { createOrdersModule } from '../modules/orders/index.js';
 
 export interface AppDependencies {
   readonly webOrigin: string;
   readonly routers?: ReadonlyArray<{ readonly basePath: string; readonly router: Router }>;
   readonly zoneRepository?: ZoneRepository;
+  readonly orderRepository?: OrderRepository;
 }
 
 export function createApp(dependencies: AppDependencies) {
@@ -37,6 +40,14 @@ export function createApp(dependencies: AppDependencies) {
   if (dependencies.zoneRepository) {
     const zonesModule = createZonesModule(dependencies.zoneRepository);
     routers.push({ basePath: '/zones', router: zonesModule.router });
+
+    if (dependencies.orderRepository) {
+      const ordersModule = createOrdersModule({
+        orderRepository: dependencies.orderRepository,
+        zoneRepository: dependencies.zoneRepository,
+      });
+      routers.push({ basePath: '/orders', router: ordersModule.router });
+    }
   }
 
   for (const { basePath, router } of routers) {
