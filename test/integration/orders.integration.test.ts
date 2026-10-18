@@ -100,42 +100,18 @@ describe('Suite de Integración API / Persistencia - Pedidos', () => {
         expect(listResponse.body.items).toHaveLength(0);
       });
 
-      it('debe rechazar cuando la fecha de entrega tiene formato inválido', async () => {
+      it.each([
+        ['la fecha de entrega tiene formato inválido', '20-10-2026', '14:30'],
+        ['la fecha de entrega no existe en el calendario', '2026-02-31', '14:30'],
+        ['la hora de entrega tiene formato inválido', '2026-10-20', '25:99'],
+      ])('debe rechazar cuando %s', async (_description, deliveryDate, deliveryTime) => {
         const response = await request(app)
           .post('/orders')
           .send({
             zoneId: validZone.id,
             deliveryAddress: 'Calle Falsa 123',
-            deliveryDate: '20-10-2026',
-            deliveryTime: '14:30',
-          });
-
-        expect(response.status).toBe(400);
-        expect(response.body.code).toBe('VALIDATION_ERROR');
-      });
-
-      it('debe rechazar cuando la fecha de entrega no existe en el calendario', async () => {
-        const response = await request(app)
-          .post('/orders')
-          .send({
-            zoneId: validZone.id,
-            deliveryAddress: 'Calle Falsa 123',
-            deliveryDate: '2026-02-31',
-            deliveryTime: '14:30',
-          });
-
-        expect(response.status).toBe(400);
-        expect(response.body.code).toBe('VALIDATION_ERROR');
-      });
-
-      it('debe rechazar cuando la hora de entrega tiene formato inválido', async () => {
-        const response = await request(app)
-          .post('/orders')
-          .send({
-            zoneId: validZone.id,
-            deliveryAddress: 'Calle Falsa 123',
-            deliveryDate: '2026-10-20',
-            deliveryTime: '25:99',
+            deliveryDate,
+            deliveryTime,
           });
 
         expect(response.status).toBe(400);

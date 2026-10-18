@@ -21,7 +21,7 @@ export class PrismaOrderRepository implements OrderRepository {
         if (ids.length !== 1 || typeof record?.id !== 'string') throw new OrderPersistenceUnavailableError();
         const items = await this.query(client, this.sql.find({ id: record.id }));
         const created = items[0];
-        if (items.length !== 1 || !created || created.status !== 'pendiente') throw new OrderPersistenceUnavailableError();
+        if (items.length !== 1 || created?.status !== 'pendiente') throw new OrderPersistenceUnavailableError();
         return created;
       });
     } catch (error: unknown) {

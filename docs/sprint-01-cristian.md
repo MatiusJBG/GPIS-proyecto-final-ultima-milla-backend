@@ -1,6 +1,6 @@
 # Sprint 01 · Cristian: integración con la base original
 
-Estado: implementación backend e integración PostgreSQL verificadas localmente. Pendientes de cierre: revisión del contrato por Jhon/Alexis, PR revisado, CI/Sonar y recorrido web que corresponden al equipo. No declarar todo el sprint Done solo por este resultado.
+Estado: implementación backend e integración PostgreSQL verificadas localmente. Pendientes de cierre: revisión del contrato por Jhon/Alexis, PR revisado, CI y recorrido web que corresponden al equipo. El análisis Sonar local se completó y sus hallazgos se corrigieron; la repetición final queda documentada en la evidencia. No declarar todo el sprint Done solo por este resultado.
 
 Fecha: 18/10/2026, America/Guayaquil. Ejecutor: Codex asistiendo a Cristian. Base Git: `478582925cec21fec18782de53d66dc12db1ae0f`. Rama: `feature/sprint-01-cristian-orders`. La implementación se entrega en esta rama; el commit base identifica únicamente el punto de partida.
 
@@ -13,7 +13,7 @@ Fecha: 18/10/2026, America/Guayaquil. Ejecutor: Codex asistiendo a Cristian. Bas
 | T12 | Registro separado del pedido persistido, estado inicial pendiente, puertos puros y Clock. Identidad/creación no dependen del cliente ni del reloj del dominio. |
 | T13 | Un schema introspectado y una fábrica Prisma; bootstrap comparte cliente con rol app. Altas mediante funciones autorizadas y lectura del resultado dentro de transacción; cierre del cliente al detener la API. |
 | T17 | ListOrders/GetOrder reutilizan consulta y mapper. Filtros AND por entrega, colección vacía válida, UUID y filtros validados; tipos de día/hora preservados sin convertirlos a UTC. |
-| T23 | Verificados adaptadores y reglas con PostgreSQL real, permisos mínimos y datos aislados. Pendientes los reportes externos Sonar/CI y la revisión del equipo. |
+| T23 | Verificados adaptadores y reglas con PostgreSQL real, permisos mínimos y datos aislados. Revisados y corregidos nueve hallazgos bajos/medios del análisis Sonar local. CI y revisión del equipo pendientes. |
 | T27 | Núcleo Orders sin dependencias de Node/Express/Prisma/SQL/configuración; mapper y errores técnicos en bordes. Tipos mínimos de cliente compartidos en infraestructura, sin dependencia de Zones hacia Orders. |
 
 ## Paquete conservado
@@ -71,4 +71,4 @@ Se extendieron los mismos archivos de Jest/Supertest de Jhon para usar repositor
 
 El paquete original de pruebas está incorporado sin cambios y con diez hashes verificados; DATABASE_PACKAGE_DIR=. lo selecciona. También puede apuntar a la copia externa idéntica. Ejecutar `npm run test:integration:postgres`. El lanzador usa un nombre Compose único, la definición test original, tmpfs y un puerto efímero local. Primero ejecuta los scripts SQL originales y luego Jest contra el rol app. La limpieza valida identidad del contenedor, nombre del proyecto y base logistica_test antes de truncar datos exclusivamente temporales. Conserva schema_migrations y reutiliza la semilla del paquete. El finally elimina solo los contenedores/red y archivo temporal de esa ejecución; nunca el volumen de desarrollo.
 
-No se ejecutaron Prisma Migrate/db push, migraciones nuevas, cambios de permisos, cambios de SQL, restauraciones ni borrado de volúmenes. No se ha ejecutado el recorrido frontend CP-015 ni completado CP-016 con ambos reportes Sonar/CI. El PR y el resultado de CI se registrarán al publicar la rama. SonarQube local está activo; su análisis espera recuperar el acceso a la cuenta admin.
+No se ejecutaron Prisma Migrate/db push, migraciones nuevas, cambios de permisos, cambios de SQL, restauraciones ni borrado de volúmenes. No se ha ejecutado el recorrido frontend CP-015 ni completado CP-016 con ambos reportes backend/frontend. PR borrador: https://github.com/MatiusJBG/GPIS-proyecto-final-ultima-milla-backend/pull/2. GitHub Actions terminó con startup_failure antes de ejecutar jobs; el usuario pidió dejar su diagnóstico pendiente. Las correcciones posteriores de Sonar quedan en commits locales, sin publicar por esa indicación.

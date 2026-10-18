@@ -63,3 +63,18 @@ El runner original de concurrencia abre conexiones administrativas adicionales: 
 Domain y Application de Orders no importan Node, Express, Prisma, SQL ni configuración global. El puerto Clock permanece puro y el reloj real está en infraestructura. Los adaptadores traducen registros y errores técnicos en los bordes.
 
 Estado por tarea, evidencia y pendientes de revisión: [docs/sprint-01-cristian.md](docs/sprint-01-cristian.md). La integración backend no sustituye el recorrido web, los reportes Sonar/CI ni el PR revisado del equipo.
+
+## Análisis SonarQube local
+
+El proyecto de esta máquina es `gpis-ultima-milla-api`, disponible en http://localhost:9000/dashboard?id=gpis-ultima-milla-api. Usa la configuración `sonar-project.properties` existente y el perfil Sonar way. El token de análisis del proyecto se guarda como `SONAR_TOKEN=...` en `.env.sonar`, excluido de Git; no se usa la contraseña de admin para el scanner.
+
+Después de guardar los cambios de código en un commit local, con Docker y SonarQube activos:
+
+```powershell
+$sonarRevision = git rev-parse HEAD
+docker run --rm --env-file .env.sonar -e SONAR_HOST_URL=http://host.docker.internal:9000 --mount "type=bind,src=$((Get-Location).Path),dst=/usr/src" sonarsource/sonar-scanner-cli@sha256:a3f4215076706c95a17a68c19322ee916e40a3acd081a8c1a1e839e0194afa57 "-Dsonar.scm.revision=$sonarRevision" '-Dsonar.qualitygate.wait=true'
+```
+
+Este comando analiza la copia local y vincula el resultado al commit indicado. El proyecto usa `develop` como nombre principal; al analizar una rama de trabajo local se debe identificar su SHA en la evidencia, sin atribuir el resultado al contenido remoto de develop. No publica cambios en GitHub.
+
+La cobertura aparece como 0% porque no se importó un informe de cobertura. La aprobación de la puerta de calidad del análisis inicial no reemplaza las pruebas de integración ni la revisión de hallazgos. No se cambiaron reglas ni umbrales de calidad para aprobar.

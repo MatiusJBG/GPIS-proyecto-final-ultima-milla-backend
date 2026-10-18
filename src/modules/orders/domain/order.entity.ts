@@ -39,8 +39,8 @@ export class Order {
   get deliveryDate(): string { return this.properties.deliveryDate; }
   get deliveryTime(): string { return this.properties.deliveryTime; }
   get status(): OrderStatus { return this.properties.status; }
-  get createdAt(): Date { return new Date(this.properties.createdAt.getTime()); }
-  get updatedAt(): Date { return new Date(this.properties.updatedAt.getTime()); }
+  get createdAt(): Date { return new Date(this.properties.createdAt); }
+  get updatedAt(): Date { return new Date(this.properties.updatedAt); }
 
   static prepare(properties: OrderDelivery): NewOrder {
     if (typeof properties.deliveryAddress !== 'string' || properties.deliveryAddress.trim().length === 0) {
@@ -73,8 +73,8 @@ export class Order {
       ...delivery,
       id,
       status: properties.status,
-      createdAt: new Date(properties.createdAt.getTime()),
-      updatedAt: new Date(properties.updatedAt.getTime()),
+      createdAt: new Date(properties.createdAt),
+      updatedAt: new Date(properties.updatedAt),
     });
   }
 

@@ -61,8 +61,8 @@ export class PrismaZoneRepository implements ZoneRepository {
   private handleError(error: unknown): never {
     if (error instanceof ZoneConflictError || error instanceof PersistenceUnavailableError) throw error;
     const detail = error as {code?:unknown;meta?:{code?:unknown;driverAdapterError?:{cause?:{originalCode?:unknown}}}} | null;
-    const codes = [detail?.code,detail?.meta?.code,detail?.meta?.driverAdapterError?.cause?.originalCode];
-    if (codes.includes('P2002') || codes.includes('23505')) throw new ZoneConflictError();
+    const codes = new Set([detail?.code,detail?.meta?.code,detail?.meta?.driverAdapterError?.cause?.originalCode]);
+    if (codes.has('P2002') || codes.has('23505')) throw new ZoneConflictError();
     throw new PersistenceUnavailableError();
   }
 }
