@@ -1,8 +1,11 @@
 import express, { type Router } from 'express';
+import type { ZoneRepository } from '../modules/zones/application/ports/zone.repository.port.js';
+import { createZonesModule } from '../modules/zones/index.js';
 
 export interface AppDependencies {
   readonly webOrigin: string;
   readonly routers?: ReadonlyArray<{ readonly basePath: string; readonly router: Router }>;
+  readonly zoneRepository?: ZoneRepository;
 }
 
 export function createApp(dependencies: AppDependencies) {
@@ -30,7 +33,13 @@ export function createApp(dependencies: AppDependencies) {
   app.use(express.json({ limit: '32kb' }));
   app.get('/health', (_request, response) => response.status(200).json({ status: 'ok' }));
 
-  for (const { basePath, router } of dependencies.routers ?? []) {
+  const routers = [...(dependencies.routers ?? [])];
+  if (dependencies.zoneRepository) {
+    const zonesModule = createZonesModule(dependencies.zoneRepository);
+    routers.push({ basePath: '/zones', router: zonesModule.router });
+  }
+
+  for (const { basePath, router } of routers) {
     app.use(basePath, router);
   }
 
