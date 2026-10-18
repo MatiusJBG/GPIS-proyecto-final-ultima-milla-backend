@@ -1,6 +1,6 @@
 # Sprint 01 · Cristian: integración con la base original
 
-Estado: implementación backend e integración PostgreSQL verificadas localmente. Pendientes de cierre: revisión del contrato por Jhon/Alexis, PR revisado, CI y recorrido web que corresponden al equipo. El análisis Sonar local se completó y sus hallazgos se corrigieron; la repetición final queda documentada en la evidencia. No declarar todo el sprint Done solo por este resultado.
+Estado: implementación backend e integración PostgreSQL verificadas localmente. Pendientes de cierre: revisión del contrato por Jhon/Alexis, PR revisado, CI y recorrido web que corresponden al equipo. SonarQube local aprobado, nueve hallazgos corregidos y cero incidencias abiertas en el análisis final; evidencia vinculada al commit local b943483b37e76a1e26b04a4faabc0fb813e246f1. No declarar todo el sprint Done solo por este resultado.
 
 Fecha: 18/10/2026, America/Guayaquil. Ejecutor: Codex asistiendo a Cristian. Base Git: `478582925cec21fec18782de53d66dc12db1ae0f`. Rama: `feature/sprint-01-cristian-orders`. La implementación se entrega en esta rama; el commit base identifica únicamente el punto de partida.
 
@@ -72,3 +72,15 @@ Se extendieron los mismos archivos de Jest/Supertest de Jhon para usar repositor
 El paquete original de pruebas está incorporado sin cambios y con diez hashes verificados; DATABASE_PACKAGE_DIR=. lo selecciona. También puede apuntar a la copia externa idéntica. Ejecutar `npm run test:integration:postgres`. El lanzador usa un nombre Compose único, la definición test original, tmpfs y un puerto efímero local. Primero ejecuta los scripts SQL originales y luego Jest contra el rol app. La limpieza valida identidad del contenedor, nombre del proyecto y base logistica_test antes de truncar datos exclusivamente temporales. Conserva schema_migrations y reutiliza la semilla del paquete. El finally elimina solo los contenedores/red y archivo temporal de esa ejecución; nunca el volumen de desarrollo.
 
 No se ejecutaron Prisma Migrate/db push, migraciones nuevas, cambios de permisos, cambios de SQL, restauraciones ni borrado de volúmenes. No se ha ejecutado el recorrido frontend CP-015 ni completado CP-016 con ambos reportes backend/frontend. PR borrador: https://github.com/MatiusJBG/GPIS-proyecto-final-ultima-milla-backend/pull/2. GitHub Actions terminó con startup_failure antes de ejecutar jobs; el usuario pidió dejar su diagnóstico pendiente. Las correcciones posteriores de Sonar quedan en commits locales, sin publicar por esa indicación.
+
+## SonarQube local final
+
+Servidor Community Build 26.9.0.129388, proyecto `gpis-ultima-milla-api`, perfil Sonar way y configuración existente de Jhon. Se recuperó la cuenta admin con respaldo previo de su H2; el usuario estableció personalmente su contraseña nueva. El proyecto anterior de SonarQube se conserva. El token nuevo solo permite analizar este proyecto, vence a los 30 días y permanece en `.env.sonar`, excluido de Git.
+
+Primera ejecución, commit `715e3db6a9761ec63e24d4a30f771122ae940be0`: nueve observaciones bajas/medias. Se corrigieron copias de Date, búsquedas de códigos con Set, una expresión regular de timestamps, una condición con optional chaining y tres variantes repetidas de integración convertidas a parametrizadas. Sin nuevas suites, supresiones, cambios de reglas ni umbrales.
+
+Ejecución final, commit local `b943483b37e76a1e26b04a4faabc0fb813e246f1`: EXECUTION SUCCESS y QUALITY GATE PASSED, cero incidencias abiertas, cero hotspots, 0% duplicación y ratings MQR A/A/A. Después de las correcciones: tipos, tipos de pruebas, lint, build, SQL original/concurrencia y las mismas 32 pruebas HTTP/Prisma/PostgreSQL aprobados.
+
+Cobertura: 0%, sin informe importado. El primer análisis reportó cero condiciones evaluadas y el segundo `ignoredConditions=true`; no se atribuye una cobertura del 80% ni una verificación completa de seguridad a la puerta aprobada. La aceptación de integración está respaldada por su ejecución independiente.
+
+Evidencia: `docs/evidence/sprint-01-sonar.json`, `docs/evidence/sprint-01-sonar.txt` y `docs/evidence/sprint-01-sonar.png`. El JSON conserva el SHA realmente analizado; commits posteriores de documentación/evidencia no modifican ese código. El nombre principal de Sonar es develop, pero se analizó la rama local de Cristian, no el develop remoto. GitHub/CI quedan pendientes por indicación expresa del usuario; el PR borrador todavía no incluye estas correcciones locales.

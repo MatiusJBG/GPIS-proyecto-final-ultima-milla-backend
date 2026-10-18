@@ -1,0 +1,90 @@
+{
+  "capturedAt": "2026-10-18T22:04:12.0844656Z",
+  "serverVersion": "26.9.0.129388",
+  "projectKey": "gpis-ultima-milla-api",
+  "dashboard": "http://localhost:9000/dashboard?id=gpis-ultima-milla-api",
+  "backendCommit": "b943483b37e76a1e26b04a4faabc0fb813e246f1",
+  "revisionEvidence": "SCM revision ID en sprint-01-sonar.txt",
+  "qualityGate": {
+    "status": "OK",
+    "conditions": [
+      {
+        "status": "OK",
+        "metricKey": "new_coverage",
+        "comparator": "LT",
+        "errorThreshold": "80",
+        "actualValue": "0.0"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_duplicated_lines_density",
+        "comparator": "GT",
+        "errorThreshold": "3",
+        "actualValue": "0.0"
+      },
+      {
+        "status": "OK",
+        "metricKey": "new_violations",
+        "comparator": "GT",
+        "errorThreshold": "0",
+        "actualValue": "0"
+      }
+    ],
+    "ignoredConditions": true,
+    "period": {
+      "mode": "PREVIOUS_VERSION",
+      "date": "2026-10-18T16:57:38-05:00"
+    },
+    "caycStatus": "compliant"
+  },
+  "unresolvedIssues": 0,
+  "issues": [],
+  "measures": [
+    {
+      "metric": "coverage",
+      "value": "0.0",
+      "bestValue": false
+    },
+    {
+      "metric": "duplicated_lines_density",
+      "value": "0.0",
+      "bestValue": true
+    },
+    {
+      "metric": "software_quality_security_rating",
+      "value": "1.0",
+      "bestValue": true
+    },
+    {
+      "metric": "ncloc",
+      "value": "1138"
+    },
+    {
+      "metric": "software_quality_reliability_rating",
+      "value": "1.0",
+      "bestValue": true
+    },
+    {
+      "metric": "security_hotspots",
+      "value": "0",
+      "bestValue": true
+    },
+    {
+      "metric": "software_quality_maintainability_rating",
+      "value": "1.0",
+      "bestValue": true
+    }
+  ],
+  "initialAnalysis": {
+    "backendCommit": "715e3db6a9761ec63e24d4a30f771122ae940be0",
+    "unresolvedIssues": 9,
+    "highOrBlockerImpacts": 0
+  },
+  "notes": [
+    "Análisis del commit local de feature/sprint-01-cristian-orders; el nombre principal del proyecto Sonar es develop, no implica analizar el develop remoto.",
+    "Perfil Sonar way y configuración existente. No se cambiaron reglas ni umbrales.",
+    "El primer análisis reportó conditions=[]; el resultado final reporta ignoredConditions=true. La aprobación no acredita 80% de cobertura: no se importó ese informe y la métrica permanece en 0%. Se revisaron además todas las incidencias y métricas.",
+    "Cobertura 0%: no se importó un informe de cobertura; no se añadieron pruebas unitarias ni umbrales aislados.",
+    "CI sigue pendiente por indicación del usuario; las correcciones locales de Sonar no se publicaron en GitHub."
+  ]
+}
