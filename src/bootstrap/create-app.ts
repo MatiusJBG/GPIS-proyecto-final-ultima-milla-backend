@@ -3,12 +3,15 @@ import type { ZoneRepository } from '../modules/zones/application/ports/zone.rep
 import { createZonesModule } from '../modules/zones/index.js';
 import type { OrderRepository } from '../modules/orders/application/ports/order.repository.port.js';
 import { createOrdersModule } from '../modules/orders/index.js';
+import { jsonErrorHandler, requireJsonObject } from './json.middleware.js';
+import type { OrderZonePort } from '../modules/orders/application/ports/order-zone.port.js';
 
 export interface AppDependencies {
   readonly webOrigin: string;
   readonly routers?: ReadonlyArray<{ readonly basePath: string; readonly router: Router }>;
   readonly zoneRepository?: ZoneRepository;
   readonly orderRepository?: OrderRepository;
+  readonly orderZoneLookup?: OrderZonePort;
 }
 
 export function createApp(dependencies: AppDependencies) {
@@ -34,25 +37,30 @@ export function createApp(dependencies: AppDependencies) {
     next();
   });
   app.use(express.json({ limit: '32kb' }));
+  app.use(requireJsonObject);
   app.get('/health', (_request, response) => response.status(200).json({ status: 'ok' }));
 
   const routers = [...(dependencies.routers ?? [])];
   if (dependencies.zoneRepository) {
     const zonesModule = createZonesModule(dependencies.zoneRepository);
     routers.push({ basePath: '/zones', router: zonesModule.router });
+  }
 
-    if (dependencies.orderRepository) {
-      const ordersModule = createOrdersModule({
-        orderRepository: dependencies.orderRepository,
-        zoneRepository: dependencies.zoneRepository,
-      });
-      routers.push({ basePath: '/orders', router: ordersModule.router });
-    }
+  if (dependencies.orderRepository) {
+    const zoneLookup = dependencies.orderZoneLookup ?? dependencies.zoneRepository;
+    if (!zoneLookup) throw new Error('Orders requiere un puerto de consulta de zonas.');
+    const ordersModule = createOrdersModule({
+      orderRepository: dependencies.orderRepository,
+      zoneRepository: zoneLookup,
+    });
+    routers.push({ basePath: '/orders', router: ordersModule.router });
   }
 
   for (const { basePath, router } of routers) {
     app.use(basePath, router);
   }
+
+  app.use(jsonErrorHandler);
 
   return app;
 }

@@ -1,6 +1,7 @@
 import type { Router } from 'express';
 import type { OrderRepository } from './application/ports/order.repository.port.js';
-import type { ZoneRepository } from '../zones/application/ports/zone.repository.port.js';
+import type { OrderZonePort } from './application/ports/order-zone.port.js';
+import { RepositoryZoneLookup } from './infrastructure/repository-zone.lookup.js';
 import { CreateOrderUseCase } from './application/use-cases/create-order.use-case.js';
 import { GetOrderUseCase } from './application/use-cases/get-order.use-case.js';
 import { ListOrdersUseCase } from './application/use-cases/list-orders.use-case.js';
@@ -10,18 +11,20 @@ import { createOrderRouter } from './presentation/http/order.router.js';
 export * from './domain/order.entity.js';
 export * from './domain/order.errors.js';
 export * from './application/ports/order-zone.port.js';
+export * from './application/ports/clock.port.js';
 export * from './application/ports/order.repository.port.js';
 export * from './application/use-cases/create-order.use-case.js';
 export * from './application/use-cases/get-order.use-case.js';
 export * from './application/use-cases/list-orders.use-case.js';
 export * from './infrastructure/postgres/in-memory-order.repository.js';
 export * from './infrastructure/postgres/prisma-order.repository.js';
+export * from './infrastructure/postgres/order-sql.port.js';
 export * from './presentation/http/order.controller.js';
 export * from './presentation/http/order.router.js';
 
 export interface OrdersModuleDependencies {
   readonly orderRepository: OrderRepository;
-  readonly zoneRepository: ZoneRepository;
+  readonly zoneRepository: OrderZonePort;
 }
 
 export interface OrdersModule {
@@ -38,7 +41,7 @@ export interface OrdersModule {
 export function createOrdersModule(dependencies: OrdersModuleDependencies): OrdersModule {
   const createOrder = new CreateOrderUseCase(
     dependencies.orderRepository,
-    dependencies.zoneRepository
+    new RepositoryZoneLookup(dependencies.zoneRepository)
   );
   const getOrder = new GetOrderUseCase(dependencies.orderRepository);
   const listOrders = new ListOrdersUseCase(dependencies.orderRepository);

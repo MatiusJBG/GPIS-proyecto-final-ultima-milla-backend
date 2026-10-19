@@ -1,0 +1,461 @@
+openapi: 3.1.0
+info:
+  title: GPIS · API de logística de última milla
+  version: 0.1.0
+  description: >-
+    Contrato canónico del Sprint 01, mantenido por Cristian. Zonas corresponde a Jhon. Propuesta para revisión
+    del equipo. Con DATABASE_URL configurada, bootstrap comparte un cliente Prisma con rol logistica_app entre
+    zonas y pedidos. Los campos adicionales de registro se ignoran: el cliente no controla identidad, estado
+    ni metadatos. Se mantiene el formato de error existente.
+servers:
+  - url: 'http://localhost:3000'
+    description: Desarrollo local; configurar el origen web mediante WEB_ORIGIN.
+tags:
+  - name: Health
+  - name: Zones
+  - name: Orders
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags:
+        - Health
+      summary: Comprobar el proceso HTTP
+      description: No comprueba conexión con PostgreSQL.
+      responses:
+        '200':
+          description: Proceso HTTP activo
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                additionalProperties: false
+                properties:
+                  status:
+                    type: string
+                    const: ok
+  /zones:
+    post:
+      operationId: createZone
+      tags:
+        - Zones
+      summary: Registrar una zona
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateZone'
+      responses:
+        '201':
+          description: Zona registrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PersistenceUnavailable'
+    get:
+      operationId: listZones
+      tags:
+        - Zones
+      summary: Listar zonas
+      responses:
+        '200':
+          description: Listado; items vacío es válido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZoneList'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PersistenceUnavailable'
+  '/zones/{id}':
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      operationId: getZone
+      tags:
+        - Zones
+      summary: Consultar una zona por UUID
+      responses:
+        '200':
+          description: Zona encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Zone'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PersistenceUnavailable'
+  /orders:
+    post:
+      operationId: registerOrder
+      tags:
+        - Orders
+      summary: Registrar un pedido pendiente
+      description: >-
+        Requiere zona existente y activa. El cliente proporciona únicamente dirección, zona, día y hora de
+        entrega. Persistencia devuelve identidad y metadatos de registro. Los campos adicionales, incluidos
+        status/createdAt/updatedAt/id, se ignoran. La función original rechaza fechas pasadas con
+        400/VALIDATION_ERROR; no se modifica esa regla SQL.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterOrder'
+            example:
+              zoneId: a0000000-0000-4000-8000-000000000001
+              deliveryAddress: Av. 9 de Octubre 123 y Malecón
+              deliveryDate: '2026-10-20'
+              deliveryTime: '14:30'
+      responses:
+        '201':
+          description: Pedido registrado con status pendiente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisteredOrder'
+              example:
+                id: b0000000-0000-4000-8000-000000000001
+                zoneId: a0000000-0000-4000-8000-000000000001
+                deliveryAddress: Av. 9 de Octubre 123 y Malecón
+                deliveryDate: '2026-10-20'
+                deliveryTime: '14:30'
+                status: pendiente
+                createdAt: '2026-10-18T15:00:00.000Z'
+                updatedAt: '2026-10-18T15:00:00.000Z'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '413':
+          $ref: '#/components/responses/PayloadTooLarge'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PersistenceUnavailable'
+    get:
+      operationId: listOrders
+      tags:
+        - Orders
+      summary: Recuperar pedidos por entrega
+      description: >-
+        Filtros opcionales combinados con AND. Se filtra deliveryDate, nunca createdAt. Un filtro
+        proporcionado debe ser un único texto válido; vacíos, fechas imposibles, objetos o parámetros
+        repetidos se rechazan. Los parámetros desconocidos se ignoran.
+      parameters:
+        - name: deliveryDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+            pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+            description: >-
+              Día de entrega local YYYY-MM-DD; fecha real de calendario, año 0001 a 9999. La función SQL
+              original rechaza altas anteriores al día actual de America/Guayaquil con VALIDATION_ERROR (400).
+              Un filtro de consulta puede usar fechas históricas. No convertir el día a UTC.
+        - name: zoneId
+          in: query
+          required: false
+          schema:
+            type: string
+            format: uuid
+            pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+      responses:
+        '200':
+          description: Listado; sin coincidencias devuelve items vacío
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderList'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PersistenceUnavailable'
+  '/orders/{id}':
+    parameters:
+      - $ref: '#/components/parameters/ResourceId'
+    get:
+      operationId: getOrder
+      tags:
+        - Orders
+      summary: Consultar un pedido por UUID
+      description: >-
+        Un UUID válido sin registro devuelve ORDER_NOT_FOUND; un fallo técnico devuelve
+        PERSISTENCE_UNAVAILABLE.
+      responses:
+        '200':
+          description: Pedido recuperado sin alterar registro ni entrega
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Order'
+        '400':
+          $ref: '#/components/responses/ValidationError'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+        '503':
+          $ref: '#/components/responses/PersistenceUnavailable'
+components:
+  parameters:
+    ResourceId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+        pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+  schemas:
+    CreateZone:
+      type: object
+      required:
+        - name
+      additionalProperties: true
+      properties:
+        name:
+          type: string
+          minLength: 1
+          pattern: \S
+    Zone:
+      type: object
+      required:
+        - id
+        - name
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: 'Instante generado por persistencia, serializado en ISO-8601 UTC.'
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: 'Instante generado por persistencia, serializado en ISO-8601 UTC.'
+          readOnly: true
+        name:
+          type: string
+          minLength: 1
+          pattern: \S
+    ZoneList:
+      type: object
+      required:
+        - items
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Zone'
+    RegisterOrder:
+      type: object
+      required:
+        - zoneId
+        - deliveryAddress
+        - deliveryDate
+        - deliveryTime
+      additionalProperties: true
+      properties:
+        zoneId:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+        deliveryAddress:
+          type: string
+          minLength: 1
+          pattern: \S
+        deliveryDate:
+          type: string
+          format: date
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          description: >-
+            Día de entrega local YYYY-MM-DD; fecha real de calendario, año 0001 a 9999. La función SQL
+            original rechaza altas anteriores al día actual de America/Guayaquil con VALIDATION_ERROR (400).
+            Un filtro de consulta puede usar fechas históricas. No convertir el día a UTC.
+        deliveryTime:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+          description: 'Hora local HH:mm de America/Guayaquil; sin segundos ni conversión UTC.'
+    Order:
+      type: object
+      required:
+        - id
+        - zoneId
+        - deliveryAddress
+        - deliveryDate
+        - deliveryTime
+        - status
+        - createdAt
+        - updatedAt
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+          readOnly: true
+        createdAt:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: 'Instante generado por persistencia, serializado en ISO-8601 UTC.'
+          readOnly: true
+        updatedAt:
+          type: string
+          format: date-time
+          pattern: Z$
+          description: 'Instante generado por persistencia, serializado en ISO-8601 UTC.'
+          readOnly: true
+        zoneId:
+          type: string
+          format: uuid
+          pattern: '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$'
+        deliveryAddress:
+          type: string
+          minLength: 1
+          pattern: \S
+        deliveryDate:
+          type: string
+          format: date
+          pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+          description: >-
+            Día de entrega local YYYY-MM-DD; fecha real de calendario, año 0001 a 9999. La función SQL
+            original rechaza altas anteriores al día actual de America/Guayaquil con VALIDATION_ERROR (400).
+            Un filtro de consulta puede usar fechas históricas. No convertir el día a UTC.
+        deliveryTime:
+          type: string
+          pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+          description: 'Hora local HH:mm de America/Guayaquil; sin segundos ni conversión UTC.'
+        status:
+          type: string
+          readOnly: true
+          enum:
+            - pendiente
+            - asignado_a_ruta
+            - recogido
+            - en_camino
+            - entregado
+    RegisteredOrder:
+      allOf:
+        - $ref: '#/components/schemas/Order'
+        - type: object
+          properties:
+            status:
+              const: pendiente
+    OrderList:
+      type: object
+      required:
+        - items
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+    ErrorDetail:
+      type: object
+      required:
+        - code
+        - message
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          enum:
+            - VALIDATION_ERROR
+            - ZONE_NOT_FOUND
+            - ORDER_NOT_FOUND
+            - DATA_CONFLICT
+            - PERSISTENCE_UNAVAILABLE
+            - INTERNAL_SERVER_ERROR
+        message:
+          type: string
+    ApiError:
+      type: object
+      required:
+        - code
+        - message
+        - error
+      additionalProperties: false
+      description: >-
+        code y message se repiten dentro de error por compatibilidad con la implementación de Jhon. Ambos
+        niveles llevan los mismos valores.
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+  responses:
+    ValidationError:
+      description: Entrada ausente o inválida; VALIDATION_ERROR.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    NotFound:
+      description: Recurso inexistente; ZONE_NOT_FOUND u ORDER_NOT_FOUND según la operación.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    Conflict:
+      description: Conflicto de datos o zona inactiva; DATA_CONFLICT.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    PayloadTooLarge:
+      description: Cuerpo JSON mayor que 32 KB; VALIDATION_ERROR.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    PersistenceUnavailable:
+      description: Persistencia no disponible; PERSISTENCE_UNAVAILABLE.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'
+    InternalError:
+      description: Fallo interno inesperado; INTERNAL_SERVER_ERROR.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ApiError'

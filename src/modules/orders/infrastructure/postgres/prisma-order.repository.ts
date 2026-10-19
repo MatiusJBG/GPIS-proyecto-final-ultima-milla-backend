@@ -1,109 +1,57 @@
-import { Order, type OrderStatus } from '../../domain/order.entity.js';
+import { Order, type NewOrder } from '../../domain/order.entity.js';
+import { OrderPersistenceUnavailableError } from '../../domain/order.errors.js';
 import type { OrderQueryFilters, OrderRepository } from '../../application/ports/order.repository.port.js';
+import type { AuthorizedOrderSql, OrderSqlQuery } from './order-sql.port.js';
+import { mapOrderRecord } from './order.mapper.js';
+import { throwOrderPersistenceError } from './order-persistence.errors.js';
 
-export interface PrismaOrderRecord {
-  readonly id: string;
-  readonly zoneId: string;
-  readonly deliveryAddress: string;
-  readonly deliveryDate: string;
-  readonly deliveryTime: string;
-  readonly status: string;
-  readonly createdAt: Date;
-  readonly updatedAt: Date;
-}
-
-export interface PrismaOrderClientLike {
-  readonly order?: {
-    create(args: { data: Record<string, unknown> }): Promise<PrismaOrderRecord>;
-    findUnique(args: { where: { id: string } }): Promise<PrismaOrderRecord | null>;
-    findMany(args?: { where?: Record<string, unknown> }): Promise<readonly PrismaOrderRecord[]>;
-  };
-}
+export type { PrismaOrderRecord } from './order.mapper.js';
+import type { PrismaQueryClient as PrismaOrderQueryClient, PrismaDatabaseClient as PrismaOrderClientLike } from '../../../../infrastructure/postgres/prisma-client.port.js';
+export type { PrismaQueryClient as PrismaOrderQueryClient, PrismaDatabaseClient as PrismaOrderClientLike } from '../../../../infrastructure/postgres/prisma-client.port.js';
 
 export class PrismaOrderRepository implements OrderRepository {
-  constructor(private readonly prisma: PrismaOrderClientLike) {}
+  constructor(private readonly prisma: PrismaOrderClientLike, private readonly sql: AuthorizedOrderSql) {}
 
-  async create(order: Order): Promise<Order> {
-    if (!this.prisma.order?.create) {
-      throw new Error('Prisma client no tiene configurado el modelo Order.');
+  async create(input: NewOrder): Promise<Order> {
+    const order = Order.prepare(input);
+    try {
+      return await this.prisma.$transaction(async (client) => {
+        const ids = await this.execute(client, this.sql.create(order));
+        const record = ids[0] as { id?: unknown } | undefined;
+        if (ids.length !== 1 || typeof record?.id !== 'string') throw new OrderPersistenceUnavailableError();
+        const items = await this.query(client, this.sql.find({ id: record.id }));
+        const created = items[0];
+        if (items.length !== 1 || created?.status !== 'pendiente') throw new OrderPersistenceUnavailableError();
+        return created;
+      });
+    } catch (error: unknown) {
+      throwOrderPersistenceError(error);
     }
-
-    const record = await this.prisma.order.create({
-      data: {
-        id: order.id,
-        zoneId: order.zoneId,
-        deliveryAddress: order.deliveryAddress,
-        deliveryDate: order.deliveryDate,
-        deliveryTime: order.deliveryTime,
-        status: order.status,
-        createdAt: order.createdAt,
-        updatedAt: order.updatedAt,
-      },
-    });
-
-    return Order.create({
-      id: record.id,
-      zoneId: record.zoneId,
-      deliveryAddress: record.deliveryAddress,
-      deliveryDate: record.deliveryDate,
-      deliveryTime: record.deliveryTime,
-      status: record.status as OrderStatus,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
-    });
   }
 
   async findById(id: string): Promise<Order | null> {
-    if (!this.prisma.order?.findUnique) {
-      throw new Error('Prisma client no tiene configurado el modelo Order.');
-    }
-
-    const record = await this.prisma.order.findUnique({
-      where: { id },
-    });
-
-    if (!record) {
-      return null;
-    }
-
-    return Order.create({
-      id: record.id,
-      zoneId: record.zoneId,
-      deliveryAddress: record.deliveryAddress,
-      deliveryDate: record.deliveryDate,
-      deliveryTime: record.deliveryTime,
-      status: record.status as OrderStatus,
-      createdAt: record.createdAt,
-      updatedAt: record.updatedAt,
-    });
+    try {
+      const items = await this.query(this.prisma, this.sql.find({ id }));
+      if (items.length > 1) throw new OrderPersistenceUnavailableError();
+      return items[0] ?? null;
+    } catch (error: unknown) { throwOrderPersistenceError(error); }
   }
 
   async findAll(filters?: OrderQueryFilters): Promise<readonly Order[]> {
-    if (!this.prisma.order?.findMany) {
-      throw new Error('Prisma client no tiene configurado el modelo Order.');
-    }
+    try { return await this.query(this.prisma, this.sql.find(filters ?? {})); }
+    catch (error: unknown) { throwOrderPersistenceError(error); }
+  }
 
-    const where: Record<string, unknown> = {};
-    if (filters?.deliveryDate) {
-      where['deliveryDate'] = filters.deliveryDate;
-    }
-    if (filters?.zoneId) {
-      where['zoneId'] = filters.zoneId;
-    }
+  private async query(client: PrismaOrderQueryClient, statement: OrderSqlQuery): Promise<readonly Order[]> {
+    return (await this.execute(client, statement)).map(mapOrderRecord);
+  }
 
-    const records = await this.prisma.order.findMany({ where });
-
-    return records.map((record) =>
-      Order.create({
-        id: record.id,
-        zoneId: record.zoneId,
-        deliveryAddress: record.deliveryAddress,
-        deliveryDate: record.deliveryDate,
-        deliveryTime: record.deliveryTime,
-        status: record.status as OrderStatus,
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
-      })
-    );
+  private async execute(client: PrismaOrderQueryClient, statement: OrderSqlQuery): Promise<readonly unknown[]> {
+    if (statement.strings.length !== statement.values.length + 1 || !Array.isArray(statement.strings.raw)) {
+      throw new OrderPersistenceUnavailableError();
+    }
+    const records = await client.$queryRaw<unknown>(statement.strings, ...statement.values);
+    if (!Array.isArray(records)) throw new OrderPersistenceUnavailableError();
+    return records;
   }
 }

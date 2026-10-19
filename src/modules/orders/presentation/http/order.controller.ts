@@ -3,10 +3,26 @@ import type { CreateOrderUseCase } from '../../application/use-cases/create-orde
 import type { GetOrderUseCase } from '../../application/use-cases/get-order.use-case.js';
 import type { ListOrdersUseCase } from '../../application/use-cases/list-orders.use-case.js';
 import {
-  OrderValidationError,
+  OrderConflictError,
   OrderNotFoundError,
+  OrderPersistenceUnavailableError,
+  OrderValidationError,
   ZoneNotFoundError,
 } from '../../domain/order.errors.js';
+
+function bodyFields(value: unknown): Record<string, unknown> {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new OrderValidationError('El cuerpo debe ser un objeto JSON con los datos del pedido.');
+  }
+  return value as Record<string, unknown>;
+}
+
+function stringField(value: unknown, field: string): string {
+  if (typeof value !== 'string') {
+    throw new OrderValidationError(`El campo ${field} es obligatorio y debe ser un texto.`);
+  }
+  return value;
+}
 
 export class OrderController {
   constructor(
@@ -17,56 +33,13 @@ export class OrderController {
 
   async create(request: Request, response: Response): Promise<void> {
     try {
-      const { zoneId, deliveryAddress, deliveryDate, deliveryTime } = request.body as {
-        zoneId?: unknown;
-        deliveryAddress?: unknown;
-        deliveryDate?: unknown;
-        deliveryTime?: unknown;
-      };
-
-      if (!zoneId || typeof zoneId !== 'string') {
-        response.status(400).json({
-          code: 'VALIDATION_ERROR',
-          message: 'El identificador de zona es obligatorio y debe ser un UUID válido.',
-          error: { code: 'VALIDATION_ERROR', message: 'El identificador de zona es obligatorio y debe ser un UUID válido.' },
-        });
-        return;
-      }
-
-      if (!deliveryAddress || typeof deliveryAddress !== 'string' || deliveryAddress.trim().length === 0) {
-        response.status(400).json({
-          code: 'VALIDATION_ERROR',
-          message: 'La dirección de entrega es obligatoria.',
-          error: { code: 'VALIDATION_ERROR', message: 'La dirección de entrega es obligatoria.' },
-        });
-        return;
-      }
-
-      if (!deliveryDate || typeof deliveryDate !== 'string') {
-        response.status(400).json({
-          code: 'VALIDATION_ERROR',
-          message: 'La fecha de entrega es obligatoria con formato YYYY-MM-DD.',
-          error: { code: 'VALIDATION_ERROR', message: 'La fecha de entrega es obligatoria con formato YYYY-MM-DD.' },
-        });
-        return;
-      }
-
-      if (!deliveryTime || typeof deliveryTime !== 'string') {
-        response.status(400).json({
-          code: 'VALIDATION_ERROR',
-          message: 'La hora de entrega es obligatoria con formato HH:mm.',
-          error: { code: 'VALIDATION_ERROR', message: 'La hora de entrega es obligatoria con formato HH:mm.' },
-        });
-        return;
-      }
-
+      const body = bodyFields(request.body);
       const order = await this.createOrderUseCase.execute({
-        zoneId,
-        deliveryAddress,
-        deliveryDate,
-        deliveryTime,
+        zoneId: stringField(body['zoneId'], 'zoneId'),
+        deliveryAddress: stringField(body['deliveryAddress'], 'deliveryAddress'),
+        deliveryDate: stringField(body['deliveryDate'], 'deliveryDate'),
+        deliveryTime: stringField(body['deliveryTime'], 'deliveryTime'),
       });
-
       response.status(201).json(order.toJSON());
     } catch (error: unknown) {
       this.handleError(error, response);
@@ -75,8 +48,7 @@ export class OrderController {
 
   async getById(request: Request, response: Response): Promise<void> {
     try {
-      const rawId = request.params['id'];
-      const id = Array.isArray(rawId) ? (rawId[0] ?? '') : (rawId ?? '');
+      const id = stringField(request.params['id'], 'id');
       const order = await this.getOrderUseCase.execute(id);
       response.status(200).json(order.toJSON());
     } catch (error: unknown) {
@@ -88,62 +60,34 @@ export class OrderController {
     try {
       const rawDeliveryDate = request.query['deliveryDate'];
       const rawZoneId = request.query['zoneId'];
-
-      const deliveryDate =
-        typeof rawDeliveryDate === 'string' && rawDeliveryDate.trim().length > 0
-          ? rawDeliveryDate.trim()
-          : undefined;
-
-      const zoneId =
-        typeof rawZoneId === 'string' && rawZoneId.trim().length > 0
-          ? rawZoneId.trim()
-          : undefined;
-
       const orders = await this.listOrdersUseCase.execute({
-        ...(deliveryDate !== undefined ? { deliveryDate } : {}),
-        ...(zoneId !== undefined ? { zoneId } : {}),
+        ...(rawDeliveryDate !== undefined ? { deliveryDate: stringField(rawDeliveryDate, 'deliveryDate') } : {}),
+        ...(rawZoneId !== undefined ? { zoneId: stringField(rawZoneId, 'zoneId') } : {}),
       });
-
-      const items = orders.map((order) => order.toJSON());
-      response.status(200).json({ items });
+      response.status(200).json({ items: orders.map((order) => order.toJSON()) });
     } catch (error: unknown) {
       this.handleError(error, response);
     }
   }
 
   private handleError(error: unknown, response: Response): void {
+    let status = 500;
+    let code = 'INTERNAL_SERVER_ERROR';
+    let message = 'Error interno inesperado.';
     if (error instanceof OrderValidationError) {
-      response.status(400).json({
-        code: error.code,
-        message: error.message,
-        error: { code: error.code, message: error.message },
-      });
-      return;
+      status = 400;
+    } else if (error instanceof OrderNotFoundError || error instanceof ZoneNotFoundError) {
+      status = 404;
+    } else if (error instanceof OrderConflictError) {
+      status = 409;
+    } else if (error instanceof OrderPersistenceUnavailableError) {
+      status = 503;
     }
-
-    if (error instanceof ZoneNotFoundError) {
-      response.status(404).json({
-        code: error.code,
-        message: error.message,
-        error: { code: error.code, message: error.message },
-      });
-      return;
+    if (status !== 500 && error instanceof Error && 'code' in error && typeof error.code === 'string') {
+      code = error.code;
+      message = error.message;
     }
-
-    if (error instanceof OrderNotFoundError) {
-      response.status(404).json({
-        code: error.code,
-        message: error.message,
-        error: { code: error.code, message: error.message },
-      });
-      return;
-    }
-
-    const message = error instanceof Error ? error.message : 'Error interno inesperado.';
-    response.status(500).json({
-      code: 'INTERNAL_SERVER_ERROR',
-      message,
-      error: { code: 'INTERNAL_SERVER_ERROR', message },
-    });
+    // Preserve Jhon's existing top-level fields and nested error during Sprint 01.
+    response.status(status).json({ code, message, error: { code, message } });
   }
 }

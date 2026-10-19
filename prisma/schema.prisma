@@ -1,0 +1,211 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["partialIndexes"]
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["logistica"]
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model app_users {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  auth_subject String    @unique
+  role         String
+  is_active    Boolean   @default(true)
+  created_at   DateTime  @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  updated_at   DateTime  @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  couriers     couriers?
+
+  @@schema("logistica")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model couriers {
+  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id             String?    @unique @db.Uuid
+  display_name        String
+  is_enabled          Boolean    @default(true)
+  is_available        Boolean    @default(false)
+  max_orders_per_trip Int
+  created_at          DateTime   @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  updated_at          DateTime   @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  app_users           app_users? @relation(fields: [user_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  routes              routes?
+
+  @@schema("logistica")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model operation_requests {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  scope           String
+  idempotency_key String   @db.Uuid
+  request_hash    String
+  status          String   @default("procesando")
+  response_code   Int?
+  response_body   Json?
+  created_at      DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  expires_at      DateTime @db.Timestamptz(6)
+
+  @@unique([scope, idempotency_key])
+  @@index([expires_at], map: "operations_expiry_idx")
+  @@schema("logistica")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model order_events {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id      String   @db.Uuid
+  order_version BigInt
+  event_type    String
+  from_status   String?
+  to_status     String
+  route_id      String?  @db.Uuid
+  actor_subject String?
+  source        String
+  metadata      Json     @default("{}")
+  occurred_at   DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  orders        orders   @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+  routes        routes?  @relation(fields: [route_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([order_id, order_version])
+  @@index([route_id], map: "events_route_idx")
+  @@schema("logistica")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model orders {
+  id               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  zone_id          String          @db.Uuid
+  delivery_address String
+  delivery_date    DateTime        @db.Date
+  delivery_time    DateTime        @db.Time(0)
+  recipient_name   String?
+  recipient_phone  String?
+  notes            String?
+  status           String          @default("pendiente")
+  version          BigInt          @default(1)
+  delivered_at     DateTime?       @db.Timestamptz(6)
+  created_at       DateTime        @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  updated_at       DateTime        @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  order_events     order_events[]
+  zones            zones           @relation(fields: [zone_id], references: [id], onUpdate: NoAction)
+  outbox_events    outbox_events[]
+  route_stops      route_stops?
+
+  @@index([delivery_date, id], map: "orders_date_id_idx")
+  @@index([zone_id, delivery_date, id], map: "orders_zone_date_id_idx")
+  @@schema("logistica")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model outbox_events {
+  id                String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  order_id          String?   @db.Uuid
+  route_id          String?   @db.Uuid
+  aggregate_version BigInt
+  event_type        String
+  schema_version    Int       @default(1)
+  payload           Json
+  created_at        DateTime  @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  published_at      DateTime? @db.Timestamptz(6)
+  attempts          Int       @default(0)
+  next_attempt_at   DateTime  @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  locked_until      DateTime? @db.Timestamptz(6)
+  locked_by         String?   @db.Uuid
+  orders            orders?   @relation(fields: [order_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  routes            routes?   @relation(fields: [route_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([order_id, aggregate_version], map: "outbox_order_version_idx", where: raw("(order_id IS NOT NULL)"))
+  @@unique([route_id, aggregate_version], map: "outbox_route_version_idx", where: raw("(route_id IS NOT NULL)"))
+  @@index([order_id], map: "outbox_order_idx")
+  @@index([next_attempt_at, id], map: "outbox_pending_idx", where: raw("(published_at IS NULL)"))
+  @@index([route_id], map: "outbox_route_idx")
+  @@schema("logistica")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model route_events {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  route_id      String   @db.Uuid
+  route_version BigInt
+  event_type    String
+  from_status   String?
+  to_status     String
+  actor_subject String?
+  metadata      Json
+  occurred_at   DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  routes        routes   @relation(fields: [route_id], references: [id], onUpdate: NoAction)
+
+  @@unique([route_id, route_version])
+  @@schema("logistica")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model route_stops {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  route_id       String    @db.Uuid
+  order_id       String    @unique(map: "stops_one_active_order_idx", where: raw("(released_at IS NULL)")) @db.Uuid
+  position       BigInt
+  added_at       DateTime  @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  released_at    DateTime? @db.Timestamptz(6)
+  release_reason String?
+  orders         orders    @relation(fields: [order_id], references: [id], onUpdate: NoAction)
+  routes         routes    @relation(fields: [route_id], references: [id], onUpdate: NoAction)
+
+  @@unique([route_id, position], map: "stops_active_position_idx", where: raw("(released_at IS NULL)"))
+  @@index([order_id], map: "stops_order_idx")
+  @@index([route_id, position], map: "stops_route_idx")
+  @@schema("logistica")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model routes {
+  id                String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  zone_id           String          @db.Uuid
+  service_date      DateTime        @db.Date
+  capacity_limit    Int
+  courier_id        String?         @unique(map: "routes_one_active_courier_idx", where: raw("(status = ANY (ARRAY['asignada'::text, 'en_curso'::text]))")) @db.Uuid
+  status            String          @default("planificada")
+  algorithm_version String
+  version           BigInt          @default(1)
+  assigned_at       DateTime?       @db.Timestamptz(6)
+  started_at        DateTime?       @db.Timestamptz(6)
+  completed_at      DateTime?       @db.Timestamptz(6)
+  created_at        DateTime        @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  updated_at        DateTime        @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  order_events      order_events[]
+  outbox_events     outbox_events[]
+  route_events      route_events[]
+  route_stops       route_stops[]
+  couriers          couriers?       @relation(fields: [courier_id], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  zones             zones           @relation(fields: [zone_id], references: [id], onUpdate: NoAction)
+
+  @@index([courier_id, service_date, id], map: "routes_courier_date_idx")
+  @@index([service_date, status, id], map: "routes_date_status_idx")
+  @@index([zone_id, service_date, id], map: "routes_zone_date_id_idx")
+  @@schema("logistica")
+}
+
+model schema_migrations {
+  version    String   @id
+  checksum   String
+  applied_at DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+
+  @@schema("logistica")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model zones {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String
+  is_active  Boolean  @default(true)
+  created_at DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  updated_at DateTime @default(dbgenerated("clock_timestamp()")) @db.Timestamptz(6)
+  orders     orders[]
+  routes     routes[]
+
+  @@schema("logistica")
+}

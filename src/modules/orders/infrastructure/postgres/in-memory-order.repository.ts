@@ -1,10 +1,17 @@
-import type { Order } from '../../domain/order.entity.js';
+import { randomUUID } from 'node:crypto';
+import { Order, type NewOrder } from '../../domain/order.entity.js';
 import type { OrderQueryFilters, OrderRepository } from '../../application/ports/order.repository.port.js';
+import type { Clock } from '../../application/ports/clock.port.js';
+import { SystemClock } from '../system-clock.js';
 
 export class InMemoryOrderRepository implements OrderRepository {
   private readonly orders = new Map<string, Order>();
 
-  async create(order: Order): Promise<Order> {
+  constructor(private readonly clock: Clock = new SystemClock()) {}
+
+  async create(input: NewOrder): Promise<Order> {
+    const now = this.clock.now();
+    const order = Order.create({ ...Order.prepare(input), id: randomUUID(), createdAt: now, updatedAt: now });
     this.orders.set(order.id, order);
     return order;
   }
