@@ -101,3 +101,9 @@ npm run test:integration:postgres
 `test:unit` añade regresiones de Zones conforme a la solicitud actual de revisión. La exclusión previa de unitarias del Sprint queda documentada como antecedente. CI ejecuta tipos, lint, build, unitarias y regresiones HTTP en memoria. La aceptación PostgreSQL sigue separada y exige motor Docker y paquete externo verificable. Un workflow escrito o una suite en memoria aprobada no acredita aceptación PostgreSQL ni ejecución remota.
 
 Auditoría actual: cero avisos en dependencias de producción; veinte moderados transitivos en herramientas de pruebas por sprintf-js (sin versión corregida publicada). Se conservan como observación de desarrollo y no se fuerzan downgrades de Jest. Revisar el [informe](docs/reviews/2026-10-20.md) antes del merge.
+
+## Aceptación PostgreSQL actual
+
+El 20/10/2026 se ejecutó la suite real sobre PostgreSQL 18.6 efímero: 34/34 pruebas aprobadas, sin omisiones; SQL de integridad/permisos/rollback y concurrencia también PASS. [Evidencia con commit, digest y hashes](docs/evidence/2026-10-20-postgres.json). El informe previo de revisión se conserva como antecedente y su bloqueo Docker ya fue superado.
+
+[Flujo de ramas main/develop](docs/workflow/BRANCHING.md). La promoción completa del Sprint sigue pendiente de Cypress, Sonar y CI remoto.
