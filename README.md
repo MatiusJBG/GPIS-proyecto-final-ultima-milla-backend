@@ -111,3 +111,5 @@ El 20/10/2026 se ejecutó la suite real sobre PostgreSQL 18.6 efímero: 34/34 pr
 ## Estado actualizado de cierre técnico del Sprint 1
 
 La revisión posterior completa CI con persistencia real y conserva los resultados locales por commit. Consultar [CI_SPRINT_01.md](docs/CI_SPRINT_01.md) para los jobs, credenciales y límites de ejecución remota. Las secciones anteriores describen estados históricos; el reporte de cierre y los artefactos bajo `docs/evidence` contienen el estado más reciente. No se ha realizado merge ni se acredita aceptación de negocio.
+
+Estado remoto actualizado: `main` es la rama predeterminada y los commits están publicados en `fix/sprint-01-review`. El PR hacia `develop` está en borrador. Consultar `docs/evidence/2026-10-20-closure.md` para los bloqueos remotos reales.
