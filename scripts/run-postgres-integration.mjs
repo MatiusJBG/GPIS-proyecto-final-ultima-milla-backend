@@ -1,12 +1,18 @@
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
-import { mkdtempSync, mkdirSync, writeFileSync, unlinkSync, rmdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, rmdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
+import { URL } from 'node:url';
 import { verifyDatabasePackage } from './verify-database-package.mjs';
 
 const packagePath = process.env.DATABASE_PACKAGE_DIR;
 verifyDatabasePackage(packagePath);
+const manifest = JSON.parse(readFileSync(new URL('../.ci/database-package.json', import.meta.url), 'utf8'));
+process.env.POSTGRES_IMAGE ??= manifest.postgresImage;
+if (!/@sha256:[a-f0-9]{64}$/.test(process.env.POSTGRES_IMAGE)) {
+  throw new Error('POSTGRES_IMAGE debe identificar una imagen inmutable por digest SHA-256.');
+}
 const project = `logistica_api_${process.pid}_${Date.now()}`;
 const temp = mkdtempSync(join(tmpdir(), 'logistica-api-'));
 const override = join(temp, 'ports.yaml');
