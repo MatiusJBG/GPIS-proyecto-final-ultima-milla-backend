@@ -13,8 +13,8 @@ const override = join(temp, 'ports.yaml');
 writeFileSync(override, 'services:\n  postgres:\n    ports:\n      - "127.0.0.1::5432"\n');
 const docker = process.platform === 'win32' ? 'docker.exe' : 'docker';
 const args = ['compose','-p',project,'-f',resolve(packagePath,'compose.test.yaml'),'-f',override];
-function run(command, commandArgs, capture = false, env = process.env) {
-  const result = spawnSync(command,commandArgs,{stdio:capture?'pipe':'inherit',encoding:'utf8',env,timeout:180_000});
+function run(command, commandArgs, capture = false, env = process.env, timeout = 180_000) {
+  const result = spawnSync(command,commandArgs,{stdio:capture?'pipe':'inherit',encoding:'utf8',env,timeout});
   if (result.error || result.status !== 0) {
     if (capture) process.stderr.write(result.stderr ?? '');
     throw new Error(`Falló ${command}; código ${result.status ?? 'sin salida'}.`);
@@ -38,9 +38,19 @@ try {
     TEST_DATABASE_CONTAINER:container,
     TEST_DATABASE_PROJECT:project,
   };
-  run(process.execPath,['--experimental-vm-modules','node_modules/jest/bin/jest.js','--config','jest.integration.config.js','--runInBand'],false,env);
+  const delimiter = process.argv.indexOf('--');
+  if (delimiter >= 0) {
+    const [command, ...commandArgs] = process.argv.slice(delimiter + 1);
+    if (!command) throw new Error('Falta el comando consumidor del ambiente PostgreSQL.');
+    run(command, commandArgs, false, env, 600_000);
+  } else {
+    run(process.execPath,['--experimental-vm-modules','node_modules/jest/bin/jest.js','--config','jest.integration.config.js','--runInBand'],false,env);
+  }
 } finally {
-  if (started) run(docker,[...args,'down']);
-  unlinkSync(override);
-  rmdirSync(temp);
+  try {
+    if (started) run(docker,[...args,'down']);
+  } finally {
+    unlinkSync(override);
+    rmdirSync(temp);
+  }
 }
