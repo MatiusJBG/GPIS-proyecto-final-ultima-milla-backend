@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import process from 'node:process';
-import { mkdtempSync, writeFileSync, unlinkSync, rmdirSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, unlinkSync, rmdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { verifyDatabasePackage } from './verify-database-package.mjs';
@@ -44,7 +44,8 @@ try {
     if (!command) throw new Error('Falta el comando consumidor del ambiente PostgreSQL.');
     run(command, commandArgs, false, env, 600_000);
   } else {
-    run(process.execPath,['--experimental-vm-modules','node_modules/jest/bin/jest.js','--config','jest.integration.config.js','--runInBand'],false,env);
+    mkdirSync('reports', { recursive: true });
+    run(process.execPath,['--experimental-vm-modules','node_modules/jest/bin/jest.js','--config','jest.integration.config.js','--runInBand','--json','--outputFile','reports/postgres.json'],false,env);
   }
 } finally {
   try {
